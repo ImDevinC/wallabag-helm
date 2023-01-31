@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "wallabag.fullname" . }}
+  labels:
+    {{- include "wallabag.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "wallabag.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "wallabag.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "wallabag.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository | default "wallabag/wallabag" }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: SYMFONY__ENV__DOMAIN_NAME
+              value: {{ .Values.domainName }}
+            - name: SYMFONY__ENV__FOSUSER_REGISTRATION
+              value: {{ .Values.userRegistration | quote }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          volumeMounts:
+            - mountPath: /var/www/wallabag/data
+              name: wallabag-data
+              {{- if .Values.storage.data.subPath }}
+              subPath: {{ .Values.storage.data.subPath }}
+              {{- end }}
+            - mountPath: /var/www/wallabag/web/assets/images
+              name: wallabag-images
+              {{- if .Values.storage.images.subPath }}
+              subPath: {{ .Values.storage.images.subPath }}
+              {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: wallabag-data
+        {{- if not .Values.storage.data.customVolume}}
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.data.pvcName | default "wallabag-data" }}
+        {{- else }}
+          {{- toYaml .Values.storage.data.volumes | nindent 10 }}
+        {{- end }}
+        - name: wallabag-images
+        {{- if not .Values.storage.images.customVolume}}
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.images.pvcName | default "wallabag-images" }}
+        {{- else }}
+          {{- toYaml .Values.storage.images.volumes | nindent 10 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

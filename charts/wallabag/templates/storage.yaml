@@ -1,0 +1,44 @@
+---
+{{- if not .Values.storage.data.customVolume }}
+{{- with .Values.storage.data }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .pvcName | default "wallabag-data" }}
+  annotations:
+    {{- toYaml .annotations | nindent 4 }}
+  labels:
+    {{- toYaml .labels | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .size }}
+  storageClassName: {{ if (kindIs "invalid" .storageClass) }}""{{- else }}{{ .storageClass | quote }}{{- end }}
+  selector:
+    {{- toYaml .selector | nindent 4 }}
+{{- end }}
+{{- end }}
+---
+{{- if not .Values.storage.images.customVolume }}
+{{- with .Values.storage.images }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .pvcName | default "wallabag-images" }}
+  annotations:
+    {{- toYaml .annotations | nindent 4 }}
+  labels:
+    {{- toYaml .labels | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .size }}
+  storageClassName: {{ if (kindIs "invalid" .storageClass) }}""{{- else }}{{ .storageClass | quote }}{{- end }}
+  selector:
+    {{- toYaml .selector | nindent 4 }}
+{{- end }}
+{{- end }}
